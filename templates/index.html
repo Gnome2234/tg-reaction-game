@@ -8,30 +8,32 @@
     <style>
         body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 10px; overflow-x: hidden; }
         .game-container { width: 100%; max-width: 500px; margin: 0 auto; }
-        canvas { background: #222; width: 100%; height: 110px; border-radius: 12px; margin-top: 5px; border: 1px solid #444; }
         
-        .admin-panel { background: #2a2a2a; padding: 15px; border-radius: 18px; margin-top: 15px; border: 2px solid #ffcc00; text-align: left; font-size: 0.9rem; }
-        .row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; gap: 8px; }
+        /* Холст теперь имеет динамический фон */
+        canvas { background: #222; width: 100%; height: 110px; border-radius: 12px; margin-top: 5px; border: 1px solid #444; transition: background 0.2s; }
         
-        .input-small { width: 60px; background: #333; color: #ffcc00; border: 1px solid #555; padding: 5px; border-radius: 6px; text-align: center; }
+        .admin-panel { background: #2a2a2a; padding: 15px; border-radius: 18px; margin-top: 10px; border: 2px solid #ffcc00; text-align: left; font-size: 0.85rem; }
+        .row { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; gap: 8px; }
+        
+        .input-small { width: 55px; background: #333; color: #ffcc00; border: 1px solid #555; padding: 4px; border-radius: 6px; text-align: center; }
+        .color-picker { width: 40px; height: 30px; border: none; padding: 0; background: none; cursor: pointer; }
+        
         input[type=range] { flex-grow: 1; }
         
         .btn { width: 100%; padding: 18px; font-size: 1.2rem; border: none; border-radius: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         #master-btn { background: #ffcc00; color: black; }
         #player-btn { background: #007bff; color: white; height: 30vh; max-height: 250px; font-size: 2rem; }
         
-        .role-sel { display: flex; flex-direction: column; gap: 15px; margin-top: 25vh; }
         .hidden { display: none !important; }
         #status { font-size: 1.3rem; height: 35px; margin: 5px 0; font-weight: bold; }
-        .label-text { color: #aaa; font-size: 0.8rem; }
+        .label-text { color: #aaa; font-size: 0.75rem; }
     </style>
 </head>
 <body>
 
-    <div id="role-setup" class="role-sel">
-        <h2>КТО ТЫ?</h2>
+    <div id="role-setup" style="margin-top: 25vh;">
         <button class="btn" style="background:#ffcc00" onclick="setRole('master')">МАСТЕР</button>
-        <button class="btn" style="background:#007bff; color:white" onclick="setRole('player')">ИГРОК</button>
+        <button class="btn" style="background:#007bff; color:white; margin-top:20px;" onclick="setRole('player')">ИГРОК</button>
     </div>
 
     <div id="game-ui" class="game-container hidden">
@@ -41,23 +43,21 @@
         <div id="master-view" class="hidden">
             <div class="admin-panel">
                 <div class="row">
-                    <span>Текущая скорость:</span>
-                    <input type="number" id="speed-num" class="input-small" value="7" oninput="sync(true)">
+                    <span>Скорость: <input type="number" id="speed-num" class="input-small" value="7" oninput="sync(true)"></span>
+                    <input type="range" id="speed-range" min="3" max="60" value="7" oninput="sync(false)">
                 </div>
                 <div class="row">
-                    <input type="range" id="speed-range" min="0" max="60" value="7" oninput="sync(false)">
-                </div>
-                <hr style="border:0; border-top:1px solid #444">
-                <div class="row">
-                    <span class="label-text">Мин. скорость:</span>
-                    <input type="number" id="min-limit" class="input-small" value="0" oninput="sync(true)">
-                    <span class="label-text">Макс. скорость:</span>
-                    <input type="number" id="max-limit" class="input-small" value="60" oninput="sync(true)">
+                    <span>Отскок: <input type="checkbox" id="bounce-mode" onchange="sync(true)"></span>
+                    <span>Край (Fail): <input type="checkbox" id="edge-check" checked onchange="sync(true)"></span>
                 </div>
                 <div class="row">
-                    <span>Ширина зоны (%):</span>
-                    <input type="number" id="target-w-input" class="input-small" value="18" min="2" max="50" oninput="sync(true)">
-                    <span>Край: <input type="checkbox" id="edge-check" checked onchange="sync(true)"></span>
+                    <span>Цвет полоски: <input type="color" id="color-bar" value="#ffffff" class="color-picker" oninput="sync(true)"></span>
+                    <span>Цвет фона: <input type="color" id="color-bg" value="#222222" class="color-picker" oninput="sync(true)"></span>
+                </div>
+                <div class="row">
+                    <span class="label-text">Мин: <input type="number" id="min-limit" class="input-small" value="3" oninput="sync(true)"></span>
+                    <span class="label-text">Макс: <input type="number" id="max-limit" class="input-small" value="60" oninput="sync(true)"></span>
+                    <span class="label-text">Зона %: <input type="number" id="target-w" class="input-small" value="18" oninput="sync(true)"></span>
                 </div>
             </div>
             <button id="master-btn" class="btn" onclick="socket.emit('master_start')">ПУСК</button>
@@ -74,8 +74,11 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         
-        let role = '', isPlaying = false, barX = 0, targetX = 100;
-        let config = { speed: 7, min_limit: 0, max_limit: 60, target_width: 18, fail_on_edge: true };
+        let role = '', isPlaying = false, barX = 0, targetX = 100, direction = 1;
+        let config = { 
+            speed: 7, bounce_mode: false, color_bar: "#ffffff", color_bg: "#222222", 
+            target_width: 18, fail_on_edge: true, min_limit: 3, max_limit: 60 
+        };
 
         tg.expand();
 
@@ -92,47 +95,39 @@
 
         function sync(fromInputs) {
             if (role !== 'master') return;
-            
             const minL = parseInt(document.getElementById('min-limit').value) || 1;
             const maxL = parseInt(document.getElementById('max-limit').value) || 100;
-            const range = document.getElementById('speed-range');
             const num = document.getElementById('speed-num');
-            
-            // Обновляем границы слайдера
-            range.min = minL;
-            range.max = maxL;
-            
-            if (fromInputs) {
-                config.speed = parseInt(num.value);
-                range.value = config.speed;
-            } else {
-                config.speed = parseInt(range.value);
-                num.value = config.speed;
-            }
-            
+            const range = document.getElementById('speed-range');
+
+            range.min = minL; range.max = maxL;
+            if (fromInputs) { config.speed = parseInt(num.value); range.value = config.speed; }
+            else { config.speed = parseInt(range.value); num.value = config.speed; }
+
             config.min_limit = minL;
             config.max_limit = maxL;
-            config.target_width = parseInt(document.getElementById('target-w-input').value) || 10;
+            config.bounce_mode = document.getElementById('bounce-mode').checked;
             config.fail_on_edge = document.getElementById('edge-check').checked;
+            config.color_bar = document.getElementById('color-bar').value;
+            config.color_bg = document.getElementById('color-bg').value;
+            config.target_width = parseInt(document.getElementById('target-w').value) || 15;
 
             socket.emit('update_settings', config);
         }
 
         socket.on('settings_changed', (data) => {
             config = data;
+            canvas.style.backgroundColor = data.color_bg; // Мгновенная смена фона
             if (role === 'master') {
-                document.getElementById('min-limit').value = data.min_limit;
-                document.getElementById('max-limit').value = data.max_limit;
-                document.getElementById('speed-num').value = data.speed;
-                document.getElementById('speed-range').value = data.speed;
-                document.getElementById('target-w-input').value = data.target_width;
-                document.getElementById('edge-check').checked = data.fail_on_edge;
+                document.getElementById('color-bar').value = data.color_bar;
+                document.getElementById('color-bg').value = data.color_bg;
+                document.getElementById('bounce-mode').checked = data.bounce_mode;
             }
         });
 
         socket.on('start_level', (data) => {
             config = data;
-            barX = 0; isPlaying = true;
+            barX = 0; direction = 1; isPlaying = true;
             document.getElementById('status').innerText = "ИГРАЕМ!";
             document.getElementById('status').style.color = "white";
             const tw = canvas.width * (config.target_width / 100);
@@ -161,20 +156,40 @@
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const tw = canvas.width * (config.target_width / 100);
+            
+            // Зона
             ctx.fillStyle = "#00ff78";
+            ctx.globalAlpha = 0.7;
             ctx.fillRect(targetX, 0, tw, canvas.height);
+            ctx.globalAlpha = 1.0;
 
             if (isPlaying) {
-                barX += config.speed * (canvas.width / 600);
-                if (barX > canvas.width) {
-                    if (config.fail_on_edge) {
-                        isPlaying = false;
-                        if (role === 'player') socket.emit('player_press', { success: false });
-                    } else { barX = 0; }
+                barX += (config.speed * direction) * (canvas.width / 600);
+
+                if (config.bounce_mode) {
+                    // Логика отскока
+                    if (barX + 8 > canvas.width || barX < 0) {
+                        direction *= -1;
+                        tg.HapticFeedback.impactOccurred('light'); // Вибрация при ударе о стенку
+                    }
+                } else {
+                    // Обычная логика (проигрыш у края или круг)
+                    if (barX > canvas.width) {
+                        if (config.fail_on_edge) {
+                            isPlaying = false;
+                            if (role === 'player') socket.emit('player_press', { success: false });
+                        } else { barX = 0; }
+                    }
                 }
             }
-            ctx.fillStyle = "white";
-            ctx.fillRect(barX, 0, 6, canvas.height);
+            
+            // Полоска
+            ctx.fillStyle = config.color_bar;
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = config.color_bar;
+            ctx.fillRect(barX, 0, 8, canvas.height);
+            ctx.shadowBlur = 0;
+
             requestAnimationFrame(draw);
         }
         draw();
