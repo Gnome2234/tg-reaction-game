@@ -1,325 +1,183 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
-      body {
-        background: #1a1a1a;
-        color: white;
-        font-family: sans-serif;
-        text-align: center;
-        margin: 0;
-        padding: 15px;
-        overflow-x: hidden;
-      }
-      .game-container {
-        width: 100%;
-        max-width: 500px;
-        margin: 0 auto;
-      }
-      canvas {
-        background: #222;
-        width: 100%;
-        height: 100px;
-        border-radius: 12px;
-        margin-top: 10px;
-        box-shadow: inset 0 0 10px #000;
-      }
-
-      .admin-panel {
-        background: #2a2a2a;
-        padding: 15px;
-        border-radius: 18px;
-        margin-top: 20px;
-        border: 2px solid #ffcc00;
-        text-align: left;
-      }
-      .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin: 15px 0;
-        gap: 10px;
-      }
-
-      /* Стили для текстового ввода */
-      .speed-input {
-        width: 70px;
-        background: #333;
-        color: #ffcc00;
-        border: 1px solid #555;
-        padding: 8px;
-        border-radius: 8px;
-        font-size: 1.1rem;
-        text-align: center;
-        font-weight: bold;
-      }
-
-      input[type="range"] {
-        flex-grow: 1;
-        height: 10px;
-        cursor: pointer;
-      }
-
-      .btn {
-        width: 100%;
-        padding: 20px;
-        font-size: 1.2rem;
-        border: none;
-        border-radius: 14px;
-        font-weight: bold;
-        cursor: pointer;
-        margin-top: 10px;
-        transition: 0.2s;
-      }
-      #master-btn {
-        background: #ffcc00;
-        color: black;
-        box-shadow: 0 4px #997a00;
-      }
-      #master-btn:active {
-        transform: translateY(2px);
-        box-shadow: 0 2px #997a00;
-      }
-
-      #player-btn {
-        background: #007bff;
-        color: white;
-        height: 35vh;
-        max-height: 300px;
-        font-size: 2rem;
-        box-shadow: 0 6px #004a99;
-      }
-      #player-btn:active {
-        transform: translateY(4px);
-        box-shadow: 0 2px #004a99;
-      }
-
-      .role-sel {
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        margin-top: 25vh;
-      }
-      .hidden {
-        display: none !important;
-      }
-      #status {
-        font-size: 1.4rem;
-        height: 40px;
-        margin: 10px 0;
-        font-weight: bold;
-        text-transform: uppercase;
-      }
+        body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 10px; overflow-x: hidden; }
+        .game-container { width: 100%; max-width: 500px; margin: 0 auto; }
+        canvas { background: #222; width: 100%; height: 110px; border-radius: 12px; margin-top: 5px; border: 1px solid #444; }
+        
+        .admin-panel { background: #2a2a2a; padding: 15px; border-radius: 18px; margin-top: 15px; border: 2px solid #ffcc00; text-align: left; font-size: 0.9rem; }
+        .row { display: flex; justify-content: space-between; align-items: center; margin: 10px 0; gap: 8px; }
+        
+        .input-small { width: 60px; background: #333; color: #ffcc00; border: 1px solid #555; padding: 5px; border-radius: 6px; text-align: center; }
+        input[type=range] { flex-grow: 1; }
+        
+        .btn { width: 100%; padding: 18px; font-size: 1.2rem; border: none; border-radius: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        #master-btn { background: #ffcc00; color: black; }
+        #player-btn { background: #007bff; color: white; height: 30vh; max-height: 250px; font-size: 2rem; }
+        
+        .role-sel { display: flex; flex-direction: column; gap: 15px; margin-top: 25vh; }
+        .hidden { display: none !important; }
+        #status { font-size: 1.3rem; height: 35px; margin: 5px 0; font-weight: bold; }
+        .label-text { color: #aaa; font-size: 0.8rem; }
     </style>
-  </head>
-  <body>
+</head>
+<body>
+
     <div id="role-setup" class="role-sel">
-      <h2>ВЫБЕРИТЕ РОЛЬ</h2>
-      <button
-        class="btn"
-        style="background: #ffcc00"
-        onclick="setRole('master')"
-      >
-        Я МАСТЕР
-      </button>
-      <button
-        class="btn"
-        style="background: #007bff; color: white"
-        onclick="setRole('player')"
-      >
-        Я ИГРОК
-      </button>
+        <h2>КТО ТЫ?</h2>
+        <button class="btn" style="background:#ffcc00" onclick="setRole('master')">МАСТЕР</button>
+        <button class="btn" style="background:#007bff; color:white" onclick="setRole('player')">ИГРОК</button>
     </div>
 
     <div id="game-ui" class="game-container hidden">
-      <div id="status">ОЖИДАНИЕ...</div>
-      <canvas id="gameCanvas"></canvas>
+        <div id="status">ОЖИДАНИЕ...</div>
+        <canvas id="gameCanvas"></canvas>
 
-      <!-- ПАНЕЛЬ МАСТЕРА -->
-      <div id="master-view" class="hidden">
-        <div class="admin-panel">
-          <div class="row">
-            <span>СКОРОСТЬ (3-60):</span>
-            <input
-              type="number"
-              id="speed-num"
-              class="speed-input"
-              min="0"
-              max="60"
-              value="7"
-              oninput="syncSettings('num')"
-            />
-          </div>
-          <div class="row">
-            <input
-              type="range"
-              id="speed-range"
-              min="0"
-              max="60"
-              value="7"
-              oninput="syncSettings('range')"
-            />
-          </div>
-          <div class="row">
-            <span>ПРОИГРЫШ У КРАЯ:</span>
-            <input
-              type="checkbox"
-              id="edge-check"
-              checked
-              onchange="syncSettings('range')"
-              style="width: 28px; height: 28px"
-            />
-          </div>
+        <div id="master-view" class="hidden">
+            <div class="admin-panel">
+                <div class="row">
+                    <span>Текущая скорость:</span>
+                    <input type="number" id="speed-num" class="input-small" value="7" oninput="sync(true)">
+                </div>
+                <div class="row">
+                    <input type="range" id="speed-range" min="3" max="60" value="7" oninput="sync(false)">
+                </div>
+                <hr style="border:0; border-top:1px solid #444">
+                <div class="row">
+                    <span class="label-text">Мин. скорость:</span>
+                    <input type="number" id="min-limit" class="input-small" value="3" oninput="sync(true)">
+                    <span class="label-text">Макс. скорость:</span>
+                    <input type="number" id="max-limit" class="input-small" value="60" oninput="sync(true)">
+                </div>
+                <div class="row">
+                    <span>Ширина зоны (%):</span>
+                    <input type="number" id="target-w-input" class="input-small" value="18" min="2" max="50" oninput="sync(true)">
+                    <span>Край: <input type="checkbox" id="edge-check" checked onchange="sync(true)"></span>
+                </div>
+            </div>
+            <button id="master-btn" class="btn" onclick="socket.emit('master_start')">ПУСК</button>
         </div>
-        <button id="master-btn" class="btn" onclick="sendStart()">
-          ЗАПУСТИТЬ
-        </button>
-      </div>
 
-      <!-- КНОПКА ИГРОКА -->
-      <div id="player-view" class="hidden">
-        <button id="player-btn" class="btn">ЖМИ!</button>
-      </div>
+        <div id="player-view" class="hidden">
+            <button id="player-btn" class="btn">ЖМИ!</button>
+        </div>
     </div>
 
     <script>
-      const socket = io();
-      const tg = window.Telegram.WebApp;
-      const canvas = document.getElementById("gameCanvas");
-      const ctx = canvas.getContext("2d");
+        const socket = io();
+        const tg = window.Telegram.WebApp;
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        let role = '', isPlaying = false, barX = 0, targetX = 100;
+        let config = { speed: 7, min_limit: 3, max_limit: 60, target_width: 18, fail_on_edge: true };
 
-      let role = "",
-        isPlaying = false,
-        barX = 0,
-        targetX = 100;
-      let speed = 7,
-        failOnEdge = true;
+        tg.expand();
 
-      tg.expand();
-
-      function setRole(r) {
-        role = r;
-        document.getElementById("role-setup").classList.add("hidden");
-        document.getElementById("game-ui").classList.remove("hidden");
-        if (role === "master")
-          document.getElementById("master-view").classList.remove("hidden");
-        else document.getElementById("player-view").classList.remove("hidden");
-        resize();
-      }
-
-      function resize() {
-        canvas.width = canvas.offsetWidth;
-        canvas.height = 100;
-        targetX = canvas.width * 0.4;
-      }
-
-      // Умная синхронизация слайдера и текстового поля
-      function syncSettings(source) {
-        if (role !== "master") return;
-
-        const numInput = document.getElementById("speed-num");
-        const rangeInput = document.getElementById("speed-range");
-
-        if (source === "range") {
-          speed = parseInt(rangeInput.value);
-          numInput.value = speed;
-        } else {
-          speed = parseInt(numInput.value);
-          if (isNaN(speed)) return;
-          if (speed < 3) speed = 3;
-          if (speed > 60) speed = 60; // Ограничим разумным пределом
-          rangeInput.value = speed;
+        function setRole(r) {
+            role = r;
+            document.getElementById('role-setup').classList.add('hidden');
+            document.getElementById('game-ui').classList.remove('hidden');
+            if (role === 'master') document.getElementById('master-view').classList.remove('hidden');
+            else document.getElementById('player-view').classList.remove('hidden');
+            resize();
         }
 
-        failOnEdge = document.getElementById("edge-check").checked;
+        function resize() { canvas.width = canvas.offsetWidth; canvas.height = 110; }
 
-        socket.emit("update_settings", {
-          speed: speed,
-          fail_on_edge: failOnEdge,
-        });
-      }
-
-      function sendStart() {
-        socket.emit("master_start");
-      }
-
-      socket.on("settings_changed", (data) => {
-        speed = data.speed;
-        failOnEdge = data.fail_on_edge;
-        if (role === "master") {
-          document.getElementById("speed-num").value = speed;
-          document.getElementById("speed-range").value = speed;
-          document.getElementById("edge-check").checked = failOnEdge;
-        }
-      });
-
-      socket.on("start_level", (data) => {
-        speed = data.speed;
-        failOnEdge = data.fail_on_edge;
-        barX = 0;
-        isPlaying = true;
-        document.getElementById("status").innerText = "ПОШЛА!";
-        document.getElementById("status").style.color = "white";
-        targetX = (0.1 + Math.random() * 0.7) * canvas.width;
-      });
-
-      function handlePress() {
-        if (!isPlaying) return;
-        isPlaying = false;
-        const tw = canvas.width * 0.18;
-        const hit = barX >= targetX && barX <= targetX + tw;
-        socket.emit("player_press", { success: hit });
-      }
-
-      const pBtn = document.getElementById("player-btn");
-      pBtn.addEventListener("touchstart", (e) => {
-        e.preventDefault();
-        handlePress();
-      });
-      pBtn.addEventListener("mousedown", handlePress);
-
-      socket.on("show_result", (data) => {
-        isPlaying = false;
-        document.getElementById("status").innerText = data.success
-          ? "ПОПАЛ! ✅"
-          : "ПРОМАХ! ❌";
-        document.getElementById("status").style.color = data.success
-          ? "#00ff78"
-          : "#ff3c3c";
-        tg.HapticFeedback.notificationOccurred(
-          data.success ? "success" : "error"
-        );
-      });
-
-      function draw() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const tw = canvas.width * 0.18;
-        ctx.fillStyle = "#00ff78";
-        ctx.fillRect(targetX, 0, tw, canvas.height);
-        if (isPlaying) {
-          barX += speed * (canvas.width / 600);
-          if (barX > canvas.width) {
-            if (failOnEdge) {
-              isPlaying = false;
-              if (role === "player")
-                socket.emit("player_press", { success: false });
+        function sync(fromInputs) {
+            if (role !== 'master') return;
+            
+            const minL = parseInt(document.getElementById('min-limit').value) || 1;
+            const maxL = parseInt(document.getElementById('max-limit').value) || 100;
+            const range = document.getElementById('speed-range');
+            const num = document.getElementById('speed-num');
+            
+            // Обновляем границы слайдера
+            range.min = minL;
+            range.max = maxL;
+            
+            if (fromInputs) {
+                config.speed = parseInt(num.value);
+                range.value = config.speed;
             } else {
-              barX = 0;
+                config.speed = parseInt(range.value);
+                num.value = config.speed;
             }
-          }
+            
+            config.min_limit = minL;
+            config.max_limit = maxL;
+            config.target_width = parseInt(document.getElementById('target-w-input').value) || 10;
+            config.fail_on_edge = document.getElementById('edge-check').checked;
+
+            socket.emit('update_settings', config);
         }
-        ctx.fillStyle = "white";
-        ctx.fillRect(barX, 0, 8, canvas.height);
-        requestAnimationFrame(draw);
-      }
-      draw();
+
+        socket.on('settings_changed', (data) => {
+            config = data;
+            if (role === 'master') {
+                document.getElementById('min-limit').value = data.min_limit;
+                document.getElementById('max-limit').value = data.max_limit;
+                document.getElementById('speed-num').value = data.speed;
+                document.getElementById('speed-range').value = data.speed;
+                document.getElementById('target-w-input').value = data.target_width;
+                document.getElementById('edge-check').checked = data.fail_on_edge;
+            }
+        });
+
+        socket.on('start_level', (data) => {
+            config = data;
+            barX = 0; isPlaying = true;
+            document.getElementById('status').innerText = "ИГРАЕМ!";
+            document.getElementById('status').style.color = "white";
+            const tw = canvas.width * (config.target_width / 100);
+            targetX = Math.random() * (canvas.width - tw);
+        });
+
+        function handlePress() {
+            if (!isPlaying) return;
+            isPlaying = false;
+            const tw = canvas.width * (config.target_width / 100);
+            const hit = barX >= targetX && barX <= (targetX + tw);
+            socket.emit('player_press', { success: hit });
+        }
+
+        const pBtn = document.getElementById('player-btn');
+        pBtn.addEventListener('touchstart', (e) => { e.preventDefault(); handlePress(); });
+        pBtn.addEventListener('mousedown', handlePress);
+
+        socket.on('show_result', (data) => {
+            isPlaying = false;
+            document.getElementById('status').innerText = data.success ? "ПОПАЛ! ✅" : "ПРОМАХ! ❌";
+            document.getElementById('status').style.color = data.success ? "#00ff78" : "#ff3c3c";
+            tg.HapticFeedback.notificationOccurred(data.success ? 'success' : 'error');
+        });
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const tw = canvas.width * (config.target_width / 100);
+            ctx.fillStyle = "#00ff78";
+            ctx.fillRect(targetX, 0, tw, canvas.height);
+
+            if (isPlaying) {
+                barX += config.speed * (canvas.width / 600);
+                if (barX > canvas.width) {
+                    if (config.fail_on_edge) {
+                        isPlaying = false;
+                        if (role === 'player') socket.emit('player_press', { success: false });
+                    } else { barX = 0; }
+                }
+            }
+            ctx.fillStyle = "white";
+            ctx.fillRect(barX, 0, 6, canvas.height);
+            requestAnimationFrame(draw);
+        }
+        draw();
     </script>
-  </body>
+</body>
 </html>
