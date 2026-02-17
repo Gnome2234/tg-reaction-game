@@ -45,12 +45,12 @@
                     <input type="number" id="speed-num" class="input-small" value="7" oninput="sync(true)">
                 </div>
                 <div class="row">
-                    <input type="range" id="speed-range" min="3" max="60" value="7" oninput="sync(false)">
+                    <input type="range" id="speed-range" min="0" max="60" value="7" oninput="sync(false)">
                 </div>
                 <hr style="border:0; border-top:1px solid #444">
                 <div class="row">
                     <span class="label-text">Мин. скорость:</span>
-                    <input type="number" id="min-limit" class="input-small" value="3" oninput="sync(true)">
+                    <input type="number" id="min-limit" class="input-small" value="0" oninput="sync(true)">
                     <span class="label-text">Макс. скорость:</span>
                     <input type="number" id="max-limit" class="input-small" value="60" oninput="sync(true)">
                 </div>
@@ -75,7 +75,7 @@
         const ctx = canvas.getContext('2d');
         
         let role = '', isPlaying = false, barX = 0, targetX = 100;
-        let config = { speed: 7, min_limit: 3, max_limit: 60, target_width: 18, fail_on_edge: true };
+        let config = { speed: 7, min_limit: 0, max_limit: 60, target_width: 18, fail_on_edge: true };
 
         tg.expand();
 
