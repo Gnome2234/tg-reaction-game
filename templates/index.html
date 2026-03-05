@@ -8,25 +8,23 @@
     <style>
         body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 10px; overflow-x: hidden; }
         .game-container { width: 100%; max-width: 500px; margin: 0 auto; }
+        canvas { background: #222; width: 100%; height: 110px; border-radius: 12px; margin-top: 5px; border: 1px solid #444; }
         
-        /* Холст теперь имеет динамический фон */
-        canvas { background: #222; width: 100%; height: 110px; border-radius: 12px; margin-top: 5px; border: 1px solid #444; transition: background 0.2s; }
+        .admin-panel { background: #2a2a2a; padding: 12px; border-radius: 18px; margin-top: 10px; border: 2px solid #ffcc00; text-align: left; font-size: 0.8rem; }
+        .row { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; gap: 5px; }
         
-        .admin-panel { background: #2a2a2a; padding: 15px; border-radius: 18px; margin-top: 10px; border: 2px solid #ffcc00; text-align: left; font-size: 0.85rem; }
-        .row { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; gap: 8px; }
-        
-        .input-small { width: 55px; background: #333; color: #ffcc00; border: 1px solid #555; padding: 4px; border-radius: 6px; text-align: center; }
-        .color-picker { width: 40px; height: 30px; border: none; padding: 0; background: none; cursor: pointer; }
+        .input-small { width: 50px; background: #333; color: #ffcc00; border: 1px solid #555; padding: 4px; border-radius: 6px; text-align: center; }
+        .hex-input { width: 75px; background: #333; color: #fff; border: 1px solid #555; padding: 4px; border-radius: 6px; text-align: center; font-family: monospace; text-transform: uppercase; }
+        .color-picker { width: 30px; height: 30px; border: none; padding: 0; background: none; cursor: pointer; vertical-align: middle; }
         
         input[type=range] { flex-grow: 1; }
-        
         .btn { width: 100%; padding: 18px; font-size: 1.2rem; border: none; border-radius: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; }
         #master-btn { background: #ffcc00; color: black; }
         #player-btn { background: #007bff; color: white; height: 30vh; max-height: 250px; font-size: 2rem; }
         
         .hidden { display: none !important; }
         #status { font-size: 1.3rem; height: 35px; margin: 5px 0; font-weight: bold; }
-        .label-text { color: #aaa; font-size: 0.75rem; }
+        .color-group { display: flex; align-items: center; gap: 5px; }
     </style>
 </head>
 <body>
@@ -42,22 +40,38 @@
 
         <div id="master-view" class="hidden">
             <div class="admin-panel">
+                <!-- Скорость -->
                 <div class="row">
-                    <span>Скорость: <input type="number" id="speed-num" class="input-small" value="7" oninput="sync(true)"></span>
+                    <span>Скор: <input type="number" id="speed-num" class="input-small" value="7" oninput="sync(true)"></span>
                     <input type="range" id="speed-range" min="3" max="60" value="7" oninput="sync(false)">
                 </div>
+                <!-- Цвета -->
+                <div class="row">
+                    <span>Полоса:</span>
+                    <div class="color-group">
+                        <input type="text" id="hex-bar" class="hex-input" value="#FFFFFF" oninput="syncColors('text', 'bar')">
+                        <input type="color" id="picker-bar" class="color-picker" value="#ffffff" oninput="syncColors('picker', 'bar')">
+                    </div>
+                </div>
+                <div class="row">
+                    <span>Зона:</span>
+                    <div class="color-group">
+                        <input type="text" id="hex-target" class="hex-input" value="#00FF78" oninput="syncColors('text', 'target')">
+                        <input type="color" id="picker-target" class="color-picker" value="#00ff78" oninput="syncColors('picker', 'target')">
+                    </div>
+                </div>
+                <div class="row">
+                    <span>Фон:</span>
+                    <div class="color-group">
+                        <input type="text" id="hex-bg" class="hex-input" value="#222222" oninput="syncColors('text', 'bg')">
+                        <input type="color" id="picker-bg" class="color-picker" value="#222222" oninput="syncColors('picker', 'bg')">
+                    </div>
+                </div>
+                <!-- Режимы -->
                 <div class="row">
                     <span>Отскок: <input type="checkbox" id="bounce-mode" onchange="sync(true)"></span>
                     <span>Край (Fail): <input type="checkbox" id="edge-check" checked onchange="sync(true)"></span>
-                </div>
-                <div class="row">
-                    <span>Цвет полоски: <input type="color" id="color-bar" value="#ffffff" class="color-picker" oninput="sync(true)"></span>
-                    <span>Цвет фона: <input type="color" id="color-bg" value="#222222" class="color-picker" oninput="sync(true)"></span>
-                </div>
-                <div class="row">
-                    <span class="label-text">Мин: <input type="number" id="min-limit" class="input-small" value="3" oninput="sync(true)"></span>
-                    <span class="label-text">Макс: <input type="number" id="max-limit" class="input-small" value="60" oninput="sync(true)"></span>
-                    <span class="label-text">Зона %: <input type="number" id="target-w" class="input-small" value="18" oninput="sync(true)"></span>
+                    <span>Зона %: <input type="number" id="target-w" class="input-small" value="18" oninput="sync(true)"></span>
                 </div>
             </div>
             <button id="master-btn" class="btn" onclick="socket.emit('master_start')">ПУСК</button>
@@ -77,7 +91,7 @@
         let role = '', isPlaying = false, barX = 0, targetX = 100, direction = 1;
         let config = { 
             speed: 7, bounce_mode: false, color_bar: "#ffffff", color_bg: "#222222", 
-            target_width: 18, fail_on_edge: true, min_limit: 3, max_limit: 60 
+            color_target: "#00ff78", target_width: 18, fail_on_edge: true 
         };
 
         tg.expand();
@@ -93,23 +107,37 @@
 
         function resize() { canvas.width = canvas.offsetWidth; canvas.height = 110; }
 
+        // Синхронизация HEX и Пикера
+        function syncColors(source, type) {
+            const hexInp = document.getElementById(`hex-${type}`);
+            const pickInp = document.getElementById(`picker-${type}`);
+
+            if (source === 'text') {
+                let val = hexInp.value;
+                if (!val.startsWith('#')) val = '#' + val;
+                if (/^#[0-9A-F]{6}$/i.test(val)) {
+                    pickInp.value = val;
+                    sync(true);
+                }
+            } else {
+                hexInp.value = pickInp.value.toUpperCase();
+                sync(true);
+            }
+        }
+
         function sync(fromInputs) {
             if (role !== 'master') return;
-            const minL = parseInt(document.getElementById('min-limit').value) || 1;
-            const maxL = parseInt(document.getElementById('max-limit').value) || 100;
             const num = document.getElementById('speed-num');
             const range = document.getElementById('speed-range');
 
-            range.min = minL; range.max = maxL;
             if (fromInputs) { config.speed = parseInt(num.value); range.value = config.speed; }
             else { config.speed = parseInt(range.value); num.value = config.speed; }
 
-            config.min_limit = minL;
-            config.max_limit = maxL;
             config.bounce_mode = document.getElementById('bounce-mode').checked;
             config.fail_on_edge = document.getElementById('edge-check').checked;
-            config.color_bar = document.getElementById('color-bar').value;
-            config.color_bg = document.getElementById('color-bg').value;
+            config.color_bar = document.getElementById('hex-bar').value;
+            config.color_bg = document.getElementById('hex-bg').value;
+            config.color_target = document.getElementById('hex-target').value;
             config.target_width = parseInt(document.getElementById('target-w').value) || 15;
 
             socket.emit('update_settings', config);
@@ -117,10 +145,13 @@
 
         socket.on('settings_changed', (data) => {
             config = data;
-            canvas.style.backgroundColor = data.color_bg; // Мгновенная смена фона
+            canvas.style.backgroundColor = data.color_bg;
             if (role === 'master') {
-                document.getElementById('color-bar').value = data.color_bar;
-                document.getElementById('color-bg').value = data.color_bg;
+                // Обновляем все поля мастера, если прилетели настройки
+                ['bar', 'target', 'bg'].forEach(t => {
+                    document.getElementById(`hex-${t}`).value = data[`color_${t}`].toUpperCase();
+                    document.getElementById(`picker-${t}`).value = data[`color_${t}`];
+                });
                 document.getElementById('bounce-mode').checked = data.bounce_mode;
             }
         });
@@ -129,7 +160,6 @@
             config = data;
             barX = 0; direction = 1; isPlaying = true;
             document.getElementById('status').innerText = "ИГРАЕМ!";
-            document.getElementById('status').style.color = "white";
             const tw = canvas.width * (config.target_width / 100);
             targetX = Math.random() * (canvas.width - tw);
         });
@@ -157,23 +187,20 @@
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             const tw = canvas.width * (config.target_width / 100);
             
-            // Зона
-            ctx.fillStyle = "#00ff78";
+            // Зона (теперь цвет из конфига)
+            ctx.fillStyle = config.color_target;
             ctx.globalAlpha = 0.7;
             ctx.fillRect(targetX, 0, tw, canvas.height);
             ctx.globalAlpha = 1.0;
 
             if (isPlaying) {
                 barX += (config.speed * direction) * (canvas.width / 600);
-
                 if (config.bounce_mode) {
-                    // Логика отскока
                     if (barX + 8 > canvas.width || barX < 0) {
                         direction *= -1;
-                        tg.HapticFeedback.impactOccurred('light'); // Вибрация при ударе о стенку
+                        tg.HapticFeedback.impactOccurred('light');
                     }
                 } else {
-                    // Обычная логика (проигрыш у края или круг)
                     if (barX > canvas.width) {
                         if (config.fail_on_edge) {
                             isPlaying = false;
