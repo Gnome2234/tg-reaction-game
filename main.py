@@ -17,7 +17,17 @@ app = Flask(__name__)
 socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Глобальные настройки
-current_settings = {"speed": 7, "fail_on_edge": True}
+current_settings = {
+    "speed": 7,
+    "min_limit": 3,
+    "max_limit": 60,
+    "target_width": 18,
+    "fail_on_edge": True,
+    "bounce_mode": False,
+    "color_bar": "#ffffff",
+    "color_bg": "#222222",
+    "color_target": "#00ff78"  # <--- Проверь, чтобы это было здесь
+}
 
 @app.route('/')
 def index():
@@ -61,3 +71,4 @@ if __name__ == '__main__':
     # Запуск сервера
     port = int(os.environ.get("PORT", 5000))
     socketio.run(app, host='0.0.0.0', port=port)
+
