@@ -8,7 +8,7 @@
     <style>
         body { background: #1a1a1a; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 10px; overflow-x: hidden; }
         .game-container { width: 100%; max-width: 500px; margin: 0 auto; }
-        canvas { background: #222; width: 100%; height: 110px; border-radius: 12px; margin-top: 5px; border: 1px solid #444; }
+        canvas { background: #222; width: 100%; height: 110px; border-radius: 12px; margin-top: 5px; border: 1px solid #444; transition: background 0.3s; }
         
         .admin-panel { background: #2a2a2a; padding: 12px; border-radius: 18px; margin-top: 10px; border: 2px solid #ffcc00; text-align: left; font-size: 0.8rem; }
         .row { display: flex; justify-content: space-between; align-items: center; margin: 8px 0; gap: 8px; }
@@ -19,41 +19,40 @@
         
         input[type=range] { flex-grow: 1; }
         .btn { width: 100%; padding: 18px; font-size: 1.2rem; border: none; border-radius: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        #master-btn { background: #ffcc00; color: black; }
-        #player-btn { background: #007bff; color: white; height: 30vh; max-height: 250px; font-size: 2rem; }
+        #master-btn { background: #ffcc00; color: black; box-shadow: 0 4px #997a00; }
+        #player-btn { background: #007bff; color: white; height: 32vh; max-height: 280px; font-size: 2.5rem; box-shadow: 0 6px #004a99; }
         
         .hidden { display: none !important; }
-        #status { font-size: 1.3rem; height: 35px; margin: 5px 0; font-weight: bold; }
-        .direction-arrow { font-size: 1.2rem; font-weight: bold; color: #ffcc00; min-width: 30px; text-align: center; }
+        #status { font-size: 1.3rem; height: 45px; margin: 5px 0; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .dir-indicator { font-size: 1.5rem; color: #ffcc00; }
     </style>
 </head>
 <body>
 
     <div id="role-setup" style="margin-top: 25vh;">
-        <button class="btn" style="background:#ffcc00" onclick="setRole('master')">Я МАСТЕР</button>
-        <button class="btn" style="background:#007bff; color:white; margin-top:20px;" onclick="setRole('player')">Я ИГРОК</button>
+        <button class="btn" style="background:#ffcc00" onclick="setRole('master')">МАСТЕР</button>
+        <button class="btn" style="background:#007bff; color:white; margin-top:20px;" onclick="setRole('player')">ИГРОК</button>
     </div>
 
     <div id="game-ui" class="game-container hidden">
-        <div id="status">ОЖИДАНИЕ...</div>
+        <div id="status">
+            <span id="live-dir" class="dir-indicator"></span>
+            <span id="status-text">ОЖИДАНИЕ...</span>
+        </div>
         <canvas id="gameCanvas"></canvas>
 
         <div id="master-view" class="hidden">
             <div class="admin-panel">
-                <!-- Скорость и Направление -->
                 <div class="row">
-                    <span id="dir-icon" class="direction-arrow">➡</span>
+                    <span id="dir-icon" style="font-size:1.5rem">➡</span>
                     <input type="range" id="speed-range" min="-60" max="60" value="7" oninput="sync(false)">
                     <input type="number" id="speed-num" class="input-small" value="7" oninput="sync(true)">
                 </div>
-
                 <div class="row">
                     <span>Мин: <input type="number" id="min-limit" class="input-small" value="-60" oninput="sync(true)"></span>
                     <span>Макс: <input type="number" id="max-limit" class="input-small" value="60" oninput="sync(true)"></span>
                     <span>Зона %: <input type="number" id="target-w" class="input-small" value="18" oninput="sync(true)"></span>
                 </div>
-
-                <!-- Выбор цветов -->
                 <div class="row">
                     <span>Фон:</span>
                     <input type="text" id="hex-bg" class="hex-input" oninput="colorSync('text', 'bg')">
@@ -69,7 +68,6 @@
                     <input type="text" id="hex-bar" class="hex-input" oninput="colorSync('text', 'bar')">
                     <input type="color" id="pick-bar" class="color-picker" oninput="colorSync('pick', 'bar')">
                 </div>
-
                 <div class="row">
                     <span>Отскок: <input type="checkbox" id="bounce-mode" onchange="sync(true)"></span>
                     <span>Край=Конец: <input type="checkbox" id="edge-check" checked onchange="sync(true)"></span>
@@ -121,21 +119,18 @@
 
         function sync(fromInputs) {
             if (role !== 'master') return;
-            const num = document.getElementById('speed-num');
-            const range = document.getElementById('speed-range');
+            const num = document.getElementById('speed-num'), range = document.getElementById('speed-range');
             const minL = parseInt(document.getElementById('min-limit').value);
             const maxL = parseInt(document.getElementById('max-limit').value);
-
             range.min = minL; range.max = maxL;
 
             if (fromInputs) { config.speed = parseInt(num.value); range.value = config.speed; }
             else { config.speed = parseInt(range.value); num.value = config.speed; }
 
-            // Обновляем иконку направления
+            // Локальное обновление стрелки для мастера
             document.getElementById('dir-icon').innerText = config.speed >= 0 ? "➡" : "⬅";
-
-            config.min_limit = minL;
-            config.max_limit = maxL;
+            
+            config.min_limit = minL; config.max_limit = maxL;
             config.bounce_mode = document.getElementById('bounce-mode').checked;
             config.fail_on_edge = document.getElementById('edge-check').checked;
             config.color_bar = document.getElementById('hex-bar').value;
@@ -147,8 +142,15 @@
         }
 
         socket.on('settings_changed', (data) => {
+            const oldSpeed = config.speed;
             config = data;
             canvas.style.backgroundColor = data.color_bg;
+            
+            // Прямой эфир: если скорость сменила знак и мы не в режиме отскока - меняем направление сразу
+            if (isPlaying && !config.bounce_mode) {
+                direction = config.speed >= 0 ? 1 : -1;
+            }
+
             if (role === 'master') {
                 document.getElementById('dir-icon').innerText = data.speed >= 0 ? "➡" : "⬅";
                 ['bar', 'target', 'bg'].forEach(t => {
@@ -160,19 +162,17 @@
                 document.getElementById('bounce-mode').checked = data.bounce_mode;
                 document.getElementById('edge-check').checked = data.fail_on_edge;
                 document.getElementById('target-w').value = data.target_width;
-                document.getElementById('min-limit').value = data.min_limit;
-                document.getElementById('max-limit').value = data.max_limit;
             }
+            document.getElementById('live-dir').innerText = data.speed >= 0 ? "➡" : "⬅";
         });
 
         socket.on('start_level', (data) => {
             config = data;
-            // Если скорость отрицательная, начинаем справа, иначе слева
             barX = config.speed >= 0 ? 0 : canvas.width;
             direction = config.speed >= 0 ? 1 : -1;
             isPlaying = true;
-            document.getElementById('status').innerText = "ИГРАЕМ!";
-            document.getElementById('status').style.color = "white";
+            document.getElementById('status-text').innerText = "ИГРАЕМ!";
+            document.getElementById('status-text').style.color = "white";
             const tw = canvas.width * (config.target_width / 100);
             targetX = Math.random() * (canvas.width - tw);
         });
@@ -191,8 +191,8 @@
 
         socket.on('show_result', (data) => {
             isPlaying = false;
-            document.getElementById('status').innerText = data.success ? "ПОПАЛ! ✅" : "ПРОМАХ! ❌";
-            document.getElementById('status').style.color = data.success ? "#00ff78" : "#ff3c3c";
+            document.getElementById('status-text').innerText = data.success ? "ПОПАЛ! ✅" : "ПРОМАХ! ❌";
+            document.getElementById('status-text').style.color = data.success ? "#00ff78" : "#ff3c3c";
             tg.HapticFeedback.notificationOccurred(data.success ? 'success' : 'error');
         });
 
@@ -205,21 +205,18 @@
             ctx.globalAlpha = 1.0;
 
             if (isPlaying) {
-                // Движение зависит от базовой скорости (config.speed) и текущего направления (direction)
-                // Используем Math.abs для скорости, так как направление уже заложено в direction
+                // Используем абсолютное значение скорости, так как direction управляется логикой отскока или знаком скорости
                 barX += (Math.abs(config.speed) * direction) * (canvas.width / 600);
 
                 if (config.bounce_mode) {
                     if (barX + 8 >= canvas.width) { barX = canvas.width - 8; direction = -1; tg.HapticFeedback.impactOccurred('light'); }
                     else if (barX <= 0) { barX = 0; direction = 1; tg.HapticFeedback.impactOccurred('light'); }
                 } else {
-                    // Конец игры при выходе за любой край
                     if (barX > canvas.width || barX < -8) {
                         if (config.fail_on_edge) {
                             isPlaying = false;
                             if (role === 'player') socket.emit('player_press', { success: false });
                         } else {
-                            // Если не Fail, то телепорт на другой край
                             barX = barX > canvas.width ? -8 : canvas.width;
                         }
                     }
